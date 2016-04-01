@@ -102,8 +102,8 @@ uint32_t ResultLib::read(std::string filename) {
             std::pair<int, int> size = Result::dimension(xScale, yScale);
             for (int j = 0; j < size.second; j++) {
                 fread(res->data[j], sizeof(uchar), size.first, fp);
-            }
-            length = uint32_t(size.first * size.second);
+	    }         
+	    length = uint32_t(size.first * size.second);
         }
         fread(&buffer, sizeof(int), 1, fp);
         if(buffer) return false;
@@ -146,6 +146,8 @@ int8_t* ResultLib::getQpMap(int frameIdx, int qp1, int qp2) {
     assert(map[frameIdx] >= 0 && map[frameIdx] < dict.size());
     Result* res = dict[map[frameIdx]];
     assert(res);
+
+    //printf("%d %d %d\n",res->ToFloatArray(qp1,qp2)[0],frameIdx,map.size());
     return res->ToFloatArray(qp1, qp2);
     
 }

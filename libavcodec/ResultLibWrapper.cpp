@@ -15,6 +15,8 @@ extern "C" {
 		p->destroy();
 	}
 	int8_t* ResultLib_getQpMap(ResultLib* p, int frameIdx, int qp1, int qp2) {
-		return p->getQpMap(frameIdx, qp1, qp2);
+		int8_t* x;
+		x = p->getQpMap(frameIdx, qp1,qp2);
+		return x;
 	}
 }

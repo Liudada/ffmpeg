@@ -151,6 +151,7 @@ typedef struct NvencContext
     int qpFade;
     ResultLib* ROInfo;
     uint32_t qpDeltaMapSize;
+    int frm;
 } NvencContext;
 
 
@@ -444,7 +445,6 @@ static av_cold int nvenc_encode_init(AVCodecContext *avctx)
     if  (ctx->qpDeltaMapFile) {
 	ctx->ROInfo = ResultLib_constructor();
         ctx->qpDeltaMapSize = ResultLib_read(ctx->ROInfo, ctx->qpDeltaMapFile);
-        ctx->encode_config.rcParams.enableExtQPDeltaMap = 1;
     }
 
     if (!nvenc_dyload_nvenc(avctx))
@@ -724,6 +724,9 @@ static av_cold int nvenc_encode_init(AVCodecContext *avctx)
             ctx->encode_config.rcParams.initialRCQP.qpInterB = qp_inter_p;
         }
     }
+
+    if (ctx->qpDeltaMapFile)
+	ctx->encode_config.rcParams.enableExtQPDeltaMap = 1;
 
     if (avctx->rc_buffer_size > 0)
         ctx->encode_config.rcParams.vbvBufferSize = avctx->rc_buffer_size;
@@ -1104,6 +1107,8 @@ FF_ENABLE_DEPRECATION_WARNINGS
 #endif
     }
 
+    ctx->frm = lock_params.frameIdx;
+
     av_log(avctx, AV_LOG_VERBOSE, "FRAME STATISTICS: Frame No. %d  PicType %c Frame AvgQP %d  SATD Cost %d  Size %d bytes\r", lock_params.frameIdx, picType, lock_params.frameAvgQP, lock_params.frameSatd, lock_params.bitstreamSizeInBytes);
 
     pkt->pts = lock_params.outputTimeStamp;
@@ -1297,12 +1302,17 @@ static int nvenc_encode_frame(AVCodecContext *avctx, AVPacket *pkt,
         pic_params.encodePicFlags = NV_ENC_PIC_FLAG_EOS;
     }
 
-    if (ctx->qpDeltaMapFile) {
-        pic_params.qpDeltaMap = ResultLib_getQpMap(ctx->ROInfo, frame->coded_picture_number, ctx->qpEnh, ctx->qpFade);
-        pic_params.qpDeltaMapSize = ctx->qpDeltaMapSize;
-	printf("%d ",frame->coded_picture_number);
-    }
+    int8_t* tmp;
 
+    if (ctx->qpDeltaMapFile && frame) {
+	tmp = ResultLib_getQpMap(ctx->ROInfo, frame->pts, ctx->qpEnh, ctx->qpFade);
+        pic_params.qpDeltaMapSize = ctx->qpDeltaMapSize;
+	if (tmp) {
+	    //printf("\n");
+	    pic_params.qpDeltaMap = tmp;
+        }
+    }
+    
     nv_status = p_nvenc->nvEncEncodePicture(ctx->nvencoder, &pic_params);
 
     if (frame && nv_status == NV_ENC_ERR_NEED_MORE_INPUT) {
